@@ -230,11 +230,13 @@ function App() {
 
   const generateConversationSummary = () => {
     const messages = transcriptItems
-      .filter(item => item.type === "MESSAGE" && item.role && item.data?.text)
-      .map(item => {
+      .filter(item => item.type === "MESSAGE" && item.role && item.title)
+      .sort((a, b) => a.createdAtMs - b.createdAtMs)
+      .map((item, index) => {
         const role = item.role === "user" ? "User" : "Assistant";
-        const text = item.data?.text || "";
-        return `${role}: ${text}`;
+        const text = item.title || "";
+        const timestamp = new Date(item.createdAtMs).toLocaleTimeString();
+        return `[${timestamp}] ${role}: ${text}`;
       });
 
     if (messages.length === 0) {
@@ -242,18 +244,21 @@ function App() {
     }
 
     const conversationText = messages.join("\n\n");
-    
-    // Simple summary for now - in production, you'd use OpenAI API for better summarization
-    const totalMessages = messages.filter(msg => msg.startsWith("User:")).length;
-    const assistantMessages = messages.filter(msg => msg.startsWith("Assistant:")).length;
+    const totalUserMessages = messages.filter(msg => msg.includes("] User:")).length;
+    const totalAssistantMessages = messages.filter(msg => msg.includes("] Assistant:")).length;
+    const conversationDuration = messages.length > 0 ? 
+      new Date(transcriptItems[transcriptItems.length - 1]?.createdAtMs || 0) - 
+      new Date(transcriptItems[0]?.createdAtMs || 0) : 0;
+    const durationMinutes = Math.round(conversationDuration / (1000 * 60));
     
     return `Conversation Summary:
-    
-Total user messages: ${totalMessages}
-Total assistant responses: ${assistantMessages}
 
-Recent conversation:
-${conversationText.slice(-1000)}${conversationText.length > 1000 ? "..." : ""}`;
+Duration: ${durationMinutes} minutes
+Total user messages: ${totalUserMessages}
+Total assistant responses: ${totalAssistantMessages}
+
+Full Conversation History:
+${conversationText}`;
   };
 
   const disconnectFromRealtime = () => {
