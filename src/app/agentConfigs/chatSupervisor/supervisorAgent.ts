@@ -1,6 +1,5 @@
 import { RealtimeItem, tool } from '@openai/agents/realtime';
 
-
 import {
   exampleAccountInfo,
   examplePolicyDocs,
@@ -13,6 +12,8 @@ export const supervisorAgentInstructions = `You are an expert customer service s
 - You can provide an answer directly, or call a tool first and then answer the question
 - If you need to call a tool, but don't have the right information, you can tell the junior agent to ask for that information in your message
 - Your message will be read verbatim by the junior agent, so feel free to use it like you would talk directly to the user
+- You have access to a memory system that can remember past conversations, user preferences, and important facts
+- Use the memory tools to retrieve relevant context and store important information for future reference
   
 ==== Domain-Specific Agent Instructions ====
 You are a helpful customer service agent working for NewTelco, helping a user efficiently fulfill their request while adhering closely to provided guidelines.
@@ -20,6 +21,8 @@ You are a helpful customer service agent working for NewTelco, helping a user ef
 # Instructions
 - Always greet the user at the start of the conversation with "Hi, you've reached NewTelco, how can I help you?"
 - Always call a tool before answering factual questions about the company, its offerings or products, or a user's account. Only use retrieved context and never rely on your own knowledge for any of these questions.
+- Before responding, search memory for relevant context about the user and conversation using the searchMemory tool
+- Store important facts, preferences, and context in memory using the storeMemory tool when appropriate
 - Escalate to a human if the user requests.
 - Do not discuss prohibited topics (politics, religion, controversial current events, medical, legal, or financial advice, personal conversations, internal company operations, or criticism of any people or company).
 - Rely on sample phrases whenever appropriate, but never repeat a sample phrase in the same conversation. Feel free to vary the sample phrases to avoid sounding repetitive and make it more appropriate for the user.
@@ -145,6 +148,68 @@ export const supervisorAgentTools = [
       additionalProperties: false,
     },
   },
+  {
+    type: "function",
+    name: "searchMemory",
+    description:
+      "Search through conversation memory and knowledge base to find relevant information, past conversations, user preferences, and context.",
+    parameters: {
+      type: "object",
+      properties: {
+        query: {
+          type: "string",
+          description: "The search query to find relevant memories.",
+        },
+        memoryTypes: {
+          type: "array",
+          items: {
+            type: "string",
+            enum: ["conversation", "fact", "preference", "context"]
+          },
+          description: "Types of memory to search through.",
+        },
+        limit: {
+          type: "number",
+          description: "Maximum number of results to return.",
+        },
+      },
+      required: ["query"],
+      additionalProperties: false,
+    },
+  },
+  {
+    type: "function",
+    name: "storeMemory",
+    description:
+      "Store important information, facts, or preferences in long-term memory for future reference.",
+    parameters: {
+      type: "object",
+      properties: {
+        content: {
+          type: "string",
+          description: "The information to store in memory.",
+        },
+        type: {
+          type: "string",
+          enum: ["fact", "preference", "context"],
+          description: "The type of information being stored.",
+        },
+        importance: {
+          type: "number",
+          minimum: 1,
+          maximum: 5,
+          description: "Importance level (1-5).",
+        },
+        tags: {
+          type: "array",
+          items: { type: "string" },
+          description: "Tags to categorize this memory.",
+        },
+      },
+      required: ["content", "type"],
+      additionalProperties: false,
+    },
+  },
 ];
 
 async function fetchResponsesMessage(body: any) {
@@ -166,7 +231,7 @@ async function fetchResponsesMessage(body: any) {
   return completion;
 }
 
-function getToolResponse(fName: string) {
+function getToolResponse(fName: string, args: any = {}) {
   switch (fName) {
     case "getUserAccountInfo":
       return exampleAccountInfo;
@@ -174,6 +239,12 @@ function getToolResponse(fName: string) {
       return examplePolicyDocs;
     case "findNearestStore":
       return exampleStoreLocations;
+    case "searchMemory":
+      // This will be handled by the actual memory service
+      return { results: [], totalFound: 0, query: args.query || "" };
+    case "storeMemory":
+      // This will be handled by the actual memory service
+      return { memoryId: "mock-id", status: "stored", content: args.content || "" };
     default:
       return { result: true };
   }
@@ -222,7 +293,7 @@ async function handleToolCalls(
     for (const toolCall of functionCalls) {
       const fName = toolCall.name;
       const args = JSON.parse(toolCall.arguments || '{}');
-      const toolRes = getToolResponse(fName);
+      const toolRes = getToolResponse(fName, args);
 
       // Since we're using a local function, we don't need to add our own breadcrumbs
       if (addBreadcrumb) {

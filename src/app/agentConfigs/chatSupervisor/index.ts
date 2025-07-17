@@ -1,5 +1,6 @@
 import { RealtimeAgent } from '@openai/agents/realtime'
 import { getNextResponseFromSupervisor } from './supervisorAgent';
+import { memoryTools } from '../../lib/memory/tools';
 
 export const chatAgent = new RealtimeAgent({
   name: 'chatAgent',
@@ -109,6 +110,7 @@ findNearestStore:
 `,
   tools: [
     getNextResponseFromSupervisor,
+    ...memoryTools,
   ],
 });
 
