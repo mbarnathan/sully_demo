@@ -1,4 +1,82 @@
 import { RealtimeAgent } from '@openai/agents/realtime';
+import { tool } from '@openai/agents/realtime';
+
+// Webhook tool for scheduling appointments and lab orders
+const webhookTool = tool(
+  {
+    name: 'callWebhook',
+    description: 'Call webhook for scheduling appointments or placing lab orders when user requests specific actions',
+    parameters: {
+      type: 'object',
+      properties: {
+        command: {
+          type: 'string',
+          description: 'The command name: "schedule_appointment" or "place_lab_order"',
+          enum: ['schedule_appointment', 'place_lab_order']
+        },
+        date: {
+          type: 'string',
+          description: 'Date mentioned by the user (if any)'
+        },
+        medication: {
+          type: 'string',
+          description: 'Medication or lab test mentioned by the user (if any)'
+        },
+        details: {
+          type: 'string',
+          description: 'Any additional details mentioned by the user'
+        }
+      },
+      required: ['command']
+    }
+  },
+  async (args) => {
+    try {
+      const webhookUrl = 'https://webhook.site/57061cae-3325-418d-8153-4730bca5f3cc';
+      const payload = {
+        command: args.command,
+        date: args.date || null,
+        medication: args.medication || null,
+        details: args.details || null,
+        timestamp: new Date().toISOString()
+      };
+
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (response.ok) {
+        if (args.command === 'schedule_appointment') {
+          return {
+            success: true,
+            message: 'Appointment has been scheduled successfully',
+            details: args.date ? `for ${args.date}` : ''
+          };
+        } else if (args.command === 'place_lab_order') {
+          return {
+            success: true,
+            message: 'Lab order has been placed successfully',
+            details: args.medication ? `for ${args.medication}` : ''
+          };
+        }
+      } else {
+        return {
+          success: false,
+          message: 'There was an error processing your request. Please try again.',
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: 'There was an error processing your request. Please try again.'
+      };
+    }
+  }
+);
 
 export const realtimeTranslationAgent = new RealtimeAgent({
   name: 'realtimeTranslation',
@@ -51,15 +129,31 @@ Assistant (Spanish): "El clima está muy agradable..."
 User (Spanish): "¿Qué hora es?"
 Assistant (English): "What time is it?"
 
+# Webhook Commands
+- Listen for specific commands that require webhook calls:
+  - "schedule followup appointment" or "schedule appointment" → use callWebhook with command "schedule_appointment"
+  - "send lab order" or "place lab order" → use callWebhook with command "place_lab_order"
+- Extract any dates mentioned (e.g., "tomorrow", "next week", "Monday")
+- Extract any medications or lab tests mentioned
+- After calling webhook, confirm the action in the target language (opposite of input language)
+
 # Special Instructions
-- Begin each session by introducing yourself in both languages: "Hello, I am your real-time bidirectional translator. Speak in English or Spanish and I will translate to the other language. Hola, soy tu traductor bidireccional en tiempo real. Habla en inglés o español y traduciré al otro idioma."
-- Always respond immediately upon detecting speech - don't wait for complete sentences
-- Do not engage in conversation or answer questions - only translate
+- Begin each session by introducing yourself in both languages: "Hello, I am your real-time bidirectional translator with appointment and lab order capabilities. Speak in English or Spanish and I will translate to the other language. Hola, soy tu traductor bidireccional en tiempo real con capacidades de citas y órdenes de laboratorio. Habla en inglés o español y traduciré al otro idioma."
+- For translation: Always respond immediately upon detecting speech - don't wait for complete sentences
+- For webhook commands: Process the command, call the webhook, then respond with confirmation
+- For regular speech: Only translate, do not engage in conversation
 - If unsure of language, default to translating as if it were English
+
+# Webhook Command Examples
+User (English): "Schedule followup appointment for next Tuesday"
+Assistant: [calls webhook] → (Spanish): "Su cita de seguimiento ha sido programada para el próximo martes"
+
+User (Spanish): "Enviar orden de laboratorio para análisis de sangre"
+Assistant: [calls webhook] → (English): "Lab order for blood test has been placed"
 `,
   handoffs: [],
-  tools: [],
-  handoffDescription: 'Real-time bidirectional English-Spanish translator',
+  tools: [webhookTool],
+  handoffDescription: 'Real-time bidirectional English-Spanish translator with appointment and lab order capabilities',
   config: {
     inputAudioTranscription: {
       model: 'gpt-4o-mini-transcribe'
