@@ -79,35 +79,31 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
 
         // For real-time translation, trigger response on delta if we have enough content
         if (sessionRef.current && event.delta) {
-          // Check if we're in a translation scenario
-          const currentAgent = sessionRef.current.currentAgent;
-          if (currentAgent?.name === 'realtimeTranslation') {
-            // Accumulate the transcription text
-            accumulatedTranscriptionRef.current += event.delta;
-            const now = Date.now();
+          // Accumulate the transcription text
+          accumulatedTranscriptionRef.current += event.delta;
+          const now = Date.now();
 
-            // Trigger translation if we have enough words or enough time has passed
-            const words = accumulatedTranscriptionRef.current.trim().split(/\s+/);
-            const shouldTranslate = words.length >= 3 ||
-                                   (now - lastTranslationTimeRef.current > 1000 && words.length >= 1);
+          // Trigger translation if we have enough words or enough time has passed
+          const words = accumulatedTranscriptionRef.current.trim().split(/\s+/);
+          const shouldTranslate = words.length >= 3 ||
+                                 (now - lastTranslationTimeRef.current > 1000 && words.length >= 1);
 
-            if (shouldTranslate && accumulatedTranscriptionRef.current.trim()) {
-              // If response is in progress, accumulate more text in the pending buffer
-              if (isResponseInProgressRef.current) {
-                // Append new text to pending, keeping the most recent content
-                const newText = accumulatedTranscriptionRef.current.trim();
-                pendingTranslationRef.current = pendingTranslationRef.current
-                  ? `${pendingTranslationRef.current} ${newText}`
-                  : newText;
-              } else {
-                // Send immediately if no response in progress
-                sendTranslationRequest(accumulatedTranscriptionRef.current.trim());
-              }
-
-              // Reset the accumulator and update timing
-              accumulatedTranscriptionRef.current = '';
-              lastTranslationTimeRef.current = now;
+          if (shouldTranslate && accumulatedTranscriptionRef.current.trim()) {
+            // If response is in progress, accumulate more text in the pending buffer
+            if (isResponseInProgressRef.current) {
+              // Append new text to pending, keeping the most recent content
+              const newText = accumulatedTranscriptionRef.current.trim();
+              pendingTranslationRef.current = pendingTranslationRef.current
+                ? `${pendingTranslationRef.current} ${newText}`
+                : newText;
+            } else {
+              // Send immediately if no response in progress
+              sendTranslationRequest(accumulatedTranscriptionRef.current.trim());
             }
+
+            // Reset the accumulator and update timing
+            accumulatedTranscriptionRef.current = '';
+            lastTranslationTimeRef.current = now;
           }
         }
         break;
@@ -125,8 +121,7 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
         isResponseInProgressRef.current = false;
 
         // Check if we have a pending translation to send
-        const currentAgent = sessionRef.current?.currentAgent;
-        if (currentAgent?.name === 'realtimeTranslation' && pendingTranslationRef.current) {
+        if (pendingTranslationRef.current) {
           sendTranslationRequest(pendingTranslationRef.current);
           pendingTranslationRef.current = '';
         }

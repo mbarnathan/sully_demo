@@ -89,10 +89,10 @@ Assistant (Spanish): "El clima está muy agradable..."
     },
     turnDetection: {
       type: 'server_vad',
-      threshold: 0.5,
+      threshold: 0.9,
       prefixPaddingMs: 300,
-      silenceDurationMs: 200,
-      createResponse: true
+      silenceDurationMs: 500,
+      createResponse: false
     }
   }
 });

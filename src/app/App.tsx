@@ -22,18 +22,10 @@ import { createModerationGuardrail } from "@/app/agentConfigs/guardrails";
 
 // Agent configs
 import { allAgentSets, defaultAgentSetKey } from "@/app/agentConfigs";
-import { customerServiceRetailScenario } from "@/app/agentConfigs/customerServiceRetail";
-import { chatSupervisorScenario } from "@/app/agentConfigs/chatSupervisor";
-import { customerServiceRetailCompanyName } from "@/app/agentConfigs/customerServiceRetail";
-import { chatSupervisorCompanyName } from "@/app/agentConfigs/chatSupervisor";
-import { simpleHandoffScenario } from "@/app/agentConfigs/simpleHandoff";
 import { realtimeTranslationScenario } from "@/app/agentConfigs/realtimeTranslation";
 
 // Map used by connect logic for scenarios defined via the SDK.
 const sdkScenarioMap: Record<string, RealtimeAgent[]> = {
-  simpleHandoff: simpleHandoffScenario,
-  customerServiceRetail: customerServiceRetailScenario,
-  chatSupervisor: chatSupervisorScenario,
   realtimeTranslation: realtimeTranslationScenario,
 };
 
@@ -214,10 +206,7 @@ function App() {
           reorderedAgents.unshift(agent);
         }
 
-        const companyName = agentSetKey === 'customerServiceRetail'
-          ? customerServiceRetailCompanyName
-          : chatSupervisorCompanyName;
-        const guardrail = createModerationGuardrail(companyName);
+        const guardrail = createModerationGuardrail('Translation Service');
 
         await connect({
           getEphemeralKey: async () => EPHEMERAL_KEY,
@@ -265,12 +254,12 @@ function App() {
     let turnDetection = null;
 
     if (!isPTTActive) {
-      // Default VAD settings for other agents
+      // Use optimized VAD settings for real-time translation
       turnDetection = {
         type: 'server_vad',
-        threshold: 0.9,
+        threshold: 0.5,
         prefix_padding_ms: 300,
-        silence_duration_ms: 500,
+        silence_duration_ms: 200,
         create_response: true,
       };
     }
