@@ -75,7 +75,7 @@ export function useHandleSessionHistory() {
     addTranscriptBreadcrumb(
       `function call: ${function_name}`,
       function_args
-    );    
+    );
   }
   function handleAgentToolEnd(details: any, _agent: any, _functionCall: any, result: any) {
     const lastFunctionCall = extractFunctionCallByName(_functionCall.name, details?.context?.history);
@@ -98,7 +98,7 @@ export function useHandleSessionHistory() {
         text = "[Transcribing...]";
       }
 
-      // If the guardrail has been tripped, this message is a message that gets sent to the 
+      // If the guardrail has been tripped, this message is a message that gets sent to the
       // assistant to correct it, so we add it as a breadcrumb instead of a message.
       const guardrailMessage = sketchilyDetectGuardrailMessage(text);
       if (guardrailMessage) {
@@ -133,16 +133,16 @@ export function useHandleSessionHistory() {
     }
   }
 
-  function handleInputTranscriptionDelta(item: any) {
+  function handleInputAudioTranscriptionDelta(item: any) {
     // Handle real-time user input transcription deltas
     const itemId = item.item_id;
     const deltaText = item.delta || "";
     if (itemId && deltaText) {
       updateTranscriptMessage(itemId, deltaText, true);
-      
+
       // Log the input transcription delta for debugging
       logServerEvent({
-        type: 'input_transcription_delta',
+        type: 'input_audio_transcription_delta',
         item_id: itemId,
         delta: deltaText
       });
@@ -150,7 +150,7 @@ export function useHandleSessionHistory() {
   }
 
   function handleTranscriptionCompleted(item: any) {
-    // History updates don't reliably end in a completed item, 
+    // History updates don't reliably end in a completed item,
     // so we need to handle finishing up when the transcription is completed.
     const itemId = item.item_id;
     const finalTranscript =
@@ -206,7 +206,7 @@ export function useHandleSessionHistory() {
     handleHistoryUpdated,
     handleHistoryAdded,
     handleTranscriptionDelta,
-    handleInputTranscriptionDelta,
+    handleInputAudioTranscriptionDelta,
     handleTranscriptionCompleted,
     handleGuardrailTripped,
   });

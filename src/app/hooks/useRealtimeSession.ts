@@ -33,6 +33,9 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
   // Track accumulated transcription for real-time translation
   const accumulatedTranscriptionRef = useRef<string>('');
   const lastTranslationTimeRef = useRef<number>(0);
+  const isResponseInProgressRef = useRef<boolean>(false);
+  const pendingTranslationRef = useRef<string>('');
+  const isPTTActiveRef = useRef<boolean>(false);
 
   const updateStatus = useCallback(
     (s: SessionStatus) => {
@@ -47,6 +50,21 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
 
   const historyHandlers = useHandleSessionHistory().current;
 
+  // Helper function to send translation request
+  const sendTranslationRequest = useCallback((textToTranslate: string) => {
+    if (!sessionRef.current || !textToTranslate.trim()) return;
+
+    isResponseInProgressRef.current = true;
+    sessionRef.current.transport.sendEvent({
+      type: 'response.create',
+      response: {
+        modalities: ['audio', 'text'],
+        instructions: `Translate this English text to Spanish immediately: "${textToTranslate.trim()}"`,
+        metadata: { source: 'realtime_translation' }
+      }
+    });
+  }, []);
+
   function handleTransportEvent(event: any) {
     // Handle additional server events that aren't managed by the session
     switch (event.type) {
@@ -57,7 +75,7 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
         break;
       }
       case "conversation.item.input_audio_transcription.delta": {
-        historyHandlers.handleInputTranscriptionDelta(event);
+        historyHandlers.handleInputAudioTranscriptionDelta(event);
 
         // For real-time translation, trigger response on delta if we have enough content
         if (sessionRef.current && event.delta) {
@@ -74,14 +92,17 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
                                    (now - lastTranslationTimeRef.current > 1000 && words.length >= 1);
 
             if (shouldTranslate && accumulatedTranscriptionRef.current.trim()) {
-              // Create a response to translate the accumulated input
-              sessionRef.current.transport.sendEvent({
-                type: 'response.create',
-                response: {
-                  modalities: ['audio', 'text'],
-                  instructions: `Translate this English text to Spanish immediately: "${accumulatedTranscriptionRef.current.trim()}"`
-                }
-              });
+              // If response is in progress, accumulate more text in the pending buffer
+              if (isResponseInProgressRef.current) {
+                // Append new text to pending, keeping the most recent content
+                const newText = accumulatedTranscriptionRef.current.trim();
+                pendingTranslationRef.current = pendingTranslationRef.current
+                  ? `${pendingTranslationRef.current} ${newText}`
+                  : newText;
+              } else {
+                // Send immediately if no response in progress
+                sendTranslationRequest(accumulatedTranscriptionRef.current.trim());
+              }
 
               // Reset the accumulator and update timing
               accumulatedTranscriptionRef.current = '';
@@ -97,6 +118,20 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
       }
       case "response.audio_transcript.delta": {
         historyHandlers.handleTranscriptionDelta(event);
+        break;
+      }
+      case "response.done": {
+        // Response is complete, we can send the next translation if pending
+        isResponseInProgressRef.current = false;
+
+        // Check if we have a pending translation to send
+        const currentAgent = sessionRef.current?.currentAgent;
+        if (currentAgent?.name === 'realtimeTranslation' && pendingTranslationRef.current) {
+          sendTranslationRequest(pendingTranslationRef.current);
+          pendingTranslationRef.current = '';
+        }
+
+        logServerEvent(event);
         break;
       }
       default: {
@@ -194,6 +229,9 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
       // Reset translation accumulator when connecting
       accumulatedTranscriptionRef.current = '';
       lastTranslationTimeRef.current = 0;
+      isResponseInProgressRef.current = false;
+      pendingTranslationRef.current = '';
+      isPTTActiveRef.current = false;
       updateStatus('CONNECTED');
     },
     [callbacks, updateStatus],
@@ -230,11 +268,13 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
 
   const pushToTalkStart = useCallback(() => {
     if (!sessionRef.current) return;
+    isPTTActiveRef.current = true;
     sessionRef.current.transport.sendEvent({ type: 'input_audio_buffer.clear' } as any);
   }, []);
 
   const pushToTalkStop = useCallback(() => {
     if (!sessionRef.current) return;
+    isPTTActiveRef.current = false;
     sessionRef.current.transport.sendEvent({ type: 'input_audio_buffer.commit' } as any);
     sessionRef.current.transport.sendEvent({ type: 'response.create' } as any);
   }, []);
