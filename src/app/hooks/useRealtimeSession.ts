@@ -38,6 +38,7 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
   const isPTTActiveRef = useRef<boolean>(false);
   const lastResponseCreatedTimeRef = useRef<number>(0);
   const responseDebounceMs = 2000; // 2 second debounce
+  const currentOriginalTextRef = useRef<string>(''); // Store original text for dual display
 
   const updateStatus = useCallback(
     (s: SessionStatus) => {
@@ -80,8 +81,11 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
         type: 'response.create',
         response: {
           modalities: ['audio', 'text'],
-          instructions: `Translate this English text to Spanish immediately: "${textToTranslate.trim()}"`,
-          metadata: { source: 'realtime_translation' }
+          instructions: `Detect the language and translate to the opposite language. Input text: "${textToTranslate.trim()}"`,
+          metadata: { 
+            source: 'realtime_translation',
+            original_text: textToTranslate.trim()
+          }
         }
       });
     } catch (error) {
@@ -133,7 +137,9 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
               console.log('Response in progress, queuing text:', pendingTranslationRef.current);
             } else {
               // Send immediately if no response in progress
-              sendTranslationRequest(accumulatedTranscriptionRef.current.trim());
+              const textToTranslate = accumulatedTranscriptionRef.current.trim();
+              currentOriginalTextRef.current = textToTranslate; // Store for dual display
+              sendTranslationRequest(textToTranslate);
             }
 
             // Reset the accumulator and update timing
@@ -179,6 +185,7 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
         // Check if we have a pending translation to send
         if (pendingTranslationRef.current) {
           console.log('Sending pending translation:', pendingTranslationRef.current);
+          currentOriginalTextRef.current = pendingTranslationRef.current; // Store for dual display
           sendTranslationRequest(pendingTranslationRef.current);
           pendingTranslationRef.current = '';
         }
@@ -285,6 +292,7 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
       pendingTranslationRef.current = '';
       isPTTActiveRef.current = false;
       lastResponseCreatedTimeRef.current = 0;
+      currentOriginalTextRef.current = '';
       updateStatus('CONNECTED');
     },
     [callbacks, updateStatus],

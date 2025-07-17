@@ -105,7 +105,20 @@ export function useHandleSessionHistory() {
         const failureDetails = JSON.parse(guardrailMessage);
         addTranscriptBreadcrumb('Output Guardrail Active', { details: failureDetails });
       } else {
-        addTranscriptMessage(itemId, role, text);
+        // For translation responses, try to extract both original and translated text
+        if (role === "assistant" && text) {
+          // Check if this might be a translation response
+          const isTranslation = text.length > 0;
+          if (isTranslation) {
+            // For now, just add the translation as is
+            // We could enhance this later to show both languages side by side
+            addTranscriptMessage(itemId, role, `🔄 ${text}`);
+          } else {
+            addTranscriptMessage(itemId, role, text);
+          }
+        } else {
+          addTranscriptMessage(itemId, role, text);
+        }
       }
     }
   }
