@@ -83,6 +83,18 @@ Assistant (Spanish): "El clima está muy agradable..."
   handoffs: [],
   tools: [translateText],
   handoffDescription: 'Real-time English to Spanish translator',
+  config: {
+    inputAudioTranscription: {
+      model: 'gpt-4o-mini-transcribe'
+    },
+    turnDetection: {
+      type: 'server_vad',
+      threshold: 0.5,
+      prefixPaddingMs: 300,
+      silenceDurationMs: 200,
+      createResponse: true
+    }
+  }
 });
 
 export const realtimeTranslationScenario = [realtimeTranslationAgent];

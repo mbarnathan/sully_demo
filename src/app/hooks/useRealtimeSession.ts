@@ -30,6 +30,10 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
   >('DISCONNECTED');
   const { logClientEvent } = useEvent();
 
+  // Track accumulated transcription for real-time translation
+  const accumulatedTranscriptionRef = useRef<string>('');
+  const lastTranslationTimeRef = useRef<number>(0);
+
   const updateStatus = useCallback(
     (s: SessionStatus) => {
       setStatus(s);
@@ -48,10 +52,43 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
     switch (event.type) {
       case "conversation.item.input_audio_transcription.completed": {
         historyHandlers.handleTranscriptionCompleted(event);
+        // Reset the accumulator when transcription is completed
+        accumulatedTranscriptionRef.current = '';
         break;
       }
       case "conversation.item.input_audio_transcription.delta": {
         historyHandlers.handleInputTranscriptionDelta(event);
+
+        // For real-time translation, trigger response on delta if we have enough content
+        if (sessionRef.current && event.delta) {
+          // Check if we're in a translation scenario
+          const currentAgent = sessionRef.current.currentAgent;
+          if (currentAgent?.name === 'realtimeTranslation') {
+            // Accumulate the transcription text
+            accumulatedTranscriptionRef.current += event.delta;
+            const now = Date.now();
+
+            // Trigger translation if we have enough words or enough time has passed
+            const words = accumulatedTranscriptionRef.current.trim().split(/\s+/);
+            const shouldTranslate = words.length >= 3 ||
+                                   (now - lastTranslationTimeRef.current > 1000 && words.length >= 1);
+
+            if (shouldTranslate && accumulatedTranscriptionRef.current.trim()) {
+              // Create a response to translate the accumulated input
+              sessionRef.current.transport.sendEvent({
+                type: 'response.create',
+                response: {
+                  modalities: ['audio', 'text'],
+                  instructions: `Translate this English text to Spanish immediately: "${accumulatedTranscriptionRef.current.trim()}"`
+                }
+              });
+
+              // Reset the accumulator and update timing
+              accumulatedTranscriptionRef.current = '';
+              lastTranslationTimeRef.current = now;
+            }
+          }
+        }
         break;
       }
       case "response.audio_transcript.done": {
@@ -65,7 +102,7 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
       default: {
         logServerEvent(event);
         break;
-      } 
+      }
     }
   }
 
@@ -154,6 +191,9 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
       });
 
       await sessionRef.current.connect({ apiKey: ek });
+      // Reset translation accumulator when connecting
+      accumulatedTranscriptionRef.current = '';
+      lastTranslationTimeRef.current = 0;
       updateStatus('CONNECTED');
     },
     [callbacks, updateStatus],
@@ -174,7 +214,7 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
   const interrupt = useCallback(() => {
     sessionRef.current?.interrupt();
   }, []);
-  
+
   const sendUserText = useCallback((text: string) => {
     assertconnected();
     sessionRef.current!.sendMessage(text);
