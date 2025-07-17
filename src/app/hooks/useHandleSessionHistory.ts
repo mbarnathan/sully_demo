@@ -133,6 +133,22 @@ export function useHandleSessionHistory() {
     }
   }
 
+  function handleInputTranscriptionDelta(item: any) {
+    // Handle real-time user input transcription deltas
+    const itemId = item.item_id;
+    const deltaText = item.delta || "";
+    if (itemId && deltaText) {
+      updateTranscriptMessage(itemId, deltaText, true);
+      
+      // Log the input transcription delta for debugging
+      logServerEvent({
+        type: 'input_transcription_delta',
+        item_id: itemId,
+        delta: deltaText
+      });
+    }
+  }
+
   function handleTranscriptionCompleted(item: any) {
     // History updates don't reliably end in a completed item, 
     // so we need to handle finishing up when the transcription is completed.
@@ -190,6 +206,7 @@ export function useHandleSessionHistory() {
     handleHistoryUpdated,
     handleHistoryAdded,
     handleTranscriptionDelta,
+    handleInputTranscriptionDelta,
     handleTranscriptionCompleted,
     handleGuardrailTripped,
   });
