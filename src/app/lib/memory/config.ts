@@ -1,5 +1,5 @@
 import { OpenAIEmbedding } from "@llamaindex/openai";
-import { BaseVectorStore, BaseEmbedding, SimpleVectorStore } from "llamaindex";
+import { BaseVectorStore, BaseEmbedding } from "llamaindex";
 import { ChromaClient } from "chromadb";
 
 export interface MemoryConfig {
@@ -27,7 +27,7 @@ export async function initializeMemoryStore(config: MemoryConfig = DEFAULT_MEMOR
     });
 
     // Initialize vector store
-    vectorStore = new SimpleVectorStore();
+    // vectorStore = new SimpleVectorStore();
 
     console.log(`Memory store initialized with collection: ${config.collectionName}`);
     return { chromaClient, vectorStore, embedding };
