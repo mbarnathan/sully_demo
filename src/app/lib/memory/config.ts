@@ -15,7 +15,7 @@ export const DEFAULT_MEMORY_CONFIG: MemoryConfig = {
 };
 
 const chromaClient: ChromaClient | null = null;
-let vectorStore: BaseVectorStore | null = null;
+const vectorStore: BaseVectorStore | null = null;
 let embedding: BaseEmbedding | null = null;
 
 export async function initializeMemoryStore(config: MemoryConfig = DEFAULT_MEMORY_CONFIG) {
