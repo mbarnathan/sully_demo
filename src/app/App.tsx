@@ -51,6 +51,7 @@ function App() {
   // via global codecPatch at module load
 
   const {
+    transcriptItems,
     addTranscriptMessage,
     addTranscriptBreadcrumb,
   } = useTranscript();
@@ -60,6 +61,8 @@ function App() {
   const [selectedAgentConfigSet, setSelectedAgentConfigSet] = useState<
     RealtimeAgent[] | null
   >(null);
+  const [showSummary, setShowSummary] = useState<boolean>(false);
+  const [conversationSummary, setConversationSummary] = useState<string>("");
 
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
   // Ref to identify whether the latest agent switch came from an automatic handoff
@@ -225,7 +228,40 @@ function App() {
     }
   };
 
+  const generateConversationSummary = () => {
+    const messages = transcriptItems
+      .filter(item => item.type === "MESSAGE" && item.role && item.data?.text)
+      .map(item => {
+        const role = item.role === "user" ? "User" : "Assistant";
+        const text = item.data?.text || "";
+        return `${role}: ${text}`;
+      });
+
+    if (messages.length === 0) {
+      return "No conversation to summarize.";
+    }
+
+    const conversationText = messages.join("\n\n");
+    
+    // Simple summary for now - in production, you'd use OpenAI API for better summarization
+    const totalMessages = messages.filter(msg => msg.startsWith("User:")).length;
+    const assistantMessages = messages.filter(msg => msg.startsWith("Assistant:")).length;
+    
+    return `Conversation Summary:
+    
+Total user messages: ${totalMessages}
+Total assistant responses: ${assistantMessages}
+
+Recent conversation:
+${conversationText.slice(-1000)}${conversationText.length > 1000 ? "..." : ""}`;
+  };
+
   const disconnectFromRealtime = () => {
+    // Generate summary before disconnecting
+    const summary = generateConversationSummary();
+    setConversationSummary(summary);
+    setShowSummary(true);
+    
     disconnect();
     setSessionStatus("DISCONNECTED");
     setIsPTTUserSpeaking(false);
@@ -538,6 +574,42 @@ function App() {
         codec={urlCodec}
         onCodecChange={handleCodecChange}
       />
+
+      {/* Conversation Summary Modal */}
+      {showSummary && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-2xl max-h-96 overflow-y-auto m-4">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Conversation Summary</h2>
+              <button
+                onClick={() => setShowSummary(false)}
+                className="text-gray-500 hover:text-gray-700 text-2xl"
+              >
+                ×
+              </button>
+            </div>
+            <div className="whitespace-pre-wrap text-gray-700 mb-4">
+              {conversationSummary}
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(conversationSummary);
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                Copy Summary
+              </button>
+              <button
+                onClick={() => setShowSummary(false)}
+                className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

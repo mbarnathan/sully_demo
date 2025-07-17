@@ -41,7 +41,7 @@ function BottomToolbar({
   };
 
   function getConnectionButtonLabel() {
-    if (isConnected) return "Disconnect";
+    if (isConnected) return "End Conversation";
     if (isConnecting) return "Connecting...";
     return "Connect";
   }
