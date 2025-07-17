@@ -247,8 +247,8 @@ function App() {
     const totalUserMessages = messages.filter(msg => msg.includes("] User:")).length;
     const totalAssistantMessages = messages.filter(msg => msg.includes("] Assistant:")).length;
     const conversationDuration = messages.length > 0 ?
-      new Date(transcriptItems[transcriptItems.length - 1]?.createdAtMs || 0) -
-      new Date(transcriptItems[0]?.createdAtMs || 0) : 0;
+      new Date(transcriptItems[transcriptItems.length - 1]?.createdAtMs || 0).getDate() -
+      new Date(transcriptItems[0]?.createdAtMs || 0).getDate() : 0;
     const durationMinutes = Math.round(conversationDuration / (1000 * 60));
 
     return `Conversation Summary:
