@@ -308,6 +308,7 @@ export const getMemoryStatsTool = tool({
     type: 'object',
     properties: {},
     additionalProperties: false,
+    required: [],
   },
   execute: async (_input, _details) => {
     try {

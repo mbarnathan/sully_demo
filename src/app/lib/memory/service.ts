@@ -1,13 +1,13 @@
-import { Document, VectorStoreIndex, RetrieverQueryEngine } from "llamaindex";
-import { getMemoryStore } from "./config";
-import { 
-  MemoryDocument, 
-  MemoryQuery, 
-  MemorySearchResult, 
-  ConversationMemory, 
-  MemoryStats 
+import {Document, MetadataMode, RetrieverQueryEngine, VectorStoreIndex} from "llamaindex";
+import {getMemoryStore} from "./config";
+import {
+  ConversationMemory,
+  MemoryDocument,
+  MemoryQuery,
+  MemorySearchResult,
+  MemoryStats
 } from "./types";
-import { v4 as uuidv4 } from "uuid";
+import {v4 as uuidv4} from "uuid";
 
 export class MemoryService {
   private static instance: MemoryService;
@@ -25,11 +25,9 @@ export class MemoryService {
 
   async initialize(): Promise<void> {
     const { vectorStore, embedding } = getMemoryStore();
-    
+
     // Create index from vector store
-    this.index = await VectorStoreIndex.fromVectorStore(vectorStore, {
-      embedModel: embedding,
-    });
+    this.index = await VectorStoreIndex.fromVectorStore(vectorStore);
 
     // Create query engine for RAG
     this.queryEngine = this.index.asQueryEngine({
@@ -75,7 +73,7 @@ export class MemoryService {
     }
   ): Promise<{ userMemoryId: string; assistantMemoryId: string }> {
     const timestamp = context.timestamp || Date.now();
-    
+
     // Store user message
     const userMemoryId = await this.storeMemory({
       content: userMessage,
@@ -120,13 +118,13 @@ export class MemoryService {
 
       // Extract source nodes and convert to results
       const results: MemorySearchResult[] = [];
-      
+
       if (response.sourceNodes) {
         response.sourceNodes.forEach((node, index) => {
           const metadata = node.node.metadata;
           const document: MemoryDocument = {
             id: metadata.id as string,
-            content: node.node.text,
+            content: node.node.getContent(MetadataMode.LLM),
             metadata: {
               timestamp: metadata.timestamp as number,
               conversationId: metadata.conversationId as string,
@@ -184,8 +182,8 @@ export class MemoryService {
     const recentConversations = await this.queryMemory({
       ...baseQuery,
       query: "recent conversation messages",
-      filters: { 
-        ...baseQuery.filters, 
+      filters: {
+        ...baseQuery.filters,
         type: ['conversation'],
         timeRange: {
           start: Date.now() - (24 * 60 * 60 * 1000), // Last 24 hours
@@ -205,7 +203,7 @@ export class MemoryService {
 
   async summarizeConversation(conversationId: string): Promise<string> {
     const memory = await this.getConversationMemory(conversationId);
-    
+
     // Simple summarization - in production, you'd use a summarization model
     const recentMessages = memory.recentConversations
       .sort((a, b) => a.metadata.timestamp - b.metadata.timestamp)
@@ -266,8 +264,8 @@ export class MemoryService {
       // Filter by importance
       if (filters.importance) {
         const { min, max } = filters.importance;
-        if (metadata.importance && 
-            ((min && metadata.importance < min) || 
+        if (metadata.importance &&
+            ((min && metadata.importance < min) ||
              (max && metadata.importance > max))) {
           return false;
         }
@@ -275,7 +273,7 @@ export class MemoryService {
 
       // Filter by tags
       if (filters.tags && metadata.tags) {
-        const hasMatchingTag = filters.tags.some(tag => 
+        const hasMatchingTag = filters.tags.some(tag =>
           metadata.tags!.includes(tag)
         );
         if (!hasMatchingTag) {

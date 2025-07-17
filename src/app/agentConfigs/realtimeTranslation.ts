@@ -13,6 +13,7 @@ const webhookTool = tool(
     description: 'Call webhook for scheduling appointments or placing lab orders when user requests specific actions',
     parameters: {
       type: 'object',
+      additionalProperties: false,
       properties: {
         command: {
           type: 'string',
@@ -34,7 +35,7 @@ const webhookTool = tool(
       },
       required: ['command']
     },
-    execute: async (args) => {
+    execute: async (args: any) => {
       try {
         const webhookUrl = 'https://webhook.site/57061cae-3325-418d-8153-4730bca5f3cc';
         const payload = {
@@ -145,18 +146,6 @@ Assistant: [calls webhook] → (English): "Lab order for blood test has been pla
   handoffs: [],
   tools: [webhookTool],
   handoffDescription: 'Real-time bidirectional English-Spanish translator with appointment and lab order capabilities',
-  config: {
-    inputAudioTranscription: {
-      model: 'gpt-4o-mini-transcribe'
-    },
-    turnDetection: {
-      type: 'server_vad',
-      threshold: 0.9,
-      prefixPaddingMs: 300,
-      silenceDurationMs: 500,
-      createResponse: false
-    }
-  }
 });
 
 export const realtimeTranslationScenario = [realtimeTranslationAgent];
