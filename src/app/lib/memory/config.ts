@@ -1,6 +1,5 @@
 import { OpenAIEmbedding } from "@llamaindex/openai";
-import { BaseVectorStore, BaseEmbedding } from "llamaindex";
-import { SimpleVectorStore } from "llamaindex/vector_stores/simple_vector_store";
+import { BaseVectorStore, BaseEmbedding, SimpleVectorStore } from "llamaindex";
 import { ChromaClient } from "chromadb";
 
 export interface MemoryConfig {
