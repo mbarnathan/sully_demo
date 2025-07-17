@@ -232,7 +232,7 @@ function App() {
     const messages = transcriptItems
       .filter(item => item.type === "MESSAGE" && item.role && item.title)
       .sort((a, b) => a.createdAtMs - b.createdAtMs)
-      .map((item, index) => {
+      .map((item, _) => {
         const role = item.role === "user" ? "User" : "Assistant";
         const text = item.title || "";
         const timestamp = new Date(item.createdAtMs).toLocaleTimeString();
@@ -246,11 +246,11 @@ function App() {
     const conversationText = messages.join("\n\n");
     const totalUserMessages = messages.filter(msg => msg.includes("] User:")).length;
     const totalAssistantMessages = messages.filter(msg => msg.includes("] Assistant:")).length;
-    const conversationDuration = messages.length > 0 ? 
-      new Date(transcriptItems[transcriptItems.length - 1]?.createdAtMs || 0) - 
+    const conversationDuration = messages.length > 0 ?
+      new Date(transcriptItems[transcriptItems.length - 1]?.createdAtMs || 0) -
       new Date(transcriptItems[0]?.createdAtMs || 0) : 0;
     const durationMinutes = Math.round(conversationDuration / (1000 * 60));
-    
+
     return `Conversation Summary:
 
 Duration: ${durationMinutes} minutes
@@ -266,7 +266,7 @@ ${conversationText}`;
     const summary = generateConversationSummary();
     setConversationSummary(summary);
     setShowSummary(true);
-    
+
     disconnect();
     setSessionStatus("DISCONNECTED");
     setIsPTTUserSpeaking(false);

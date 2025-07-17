@@ -1,7 +1,7 @@
 import { OpenAIEmbedding } from "@llamaindex/openai";
-import { BaseVectorStore, BaseEmbedding, SimpleVectorStore } from "llamaindex";
+import { BaseVectorStore, BaseEmbedding } from "llamaindex";
+import { SimpleVectorStore } from "llamaindex/vector_stores/simple_vector_store";
 import { ChromaClient } from "chromadb";
-// import { ChromaClient } from "chromadb";
 
 export interface MemoryConfig {
   chromaUrl: string;
@@ -15,19 +15,12 @@ export const DEFAULT_MEMORY_CONFIG: MemoryConfig = {
   embeddingModel: "text-embedding-3-small",
 };
 
-let chromaClient: ChromaClient | null = null;
+const chromaClient: ChromaClient | null = null;
 let vectorStore: BaseVectorStore | null = null;
 let embedding: BaseEmbedding | null = null;
 
 export async function initializeMemoryStore(config: MemoryConfig = DEFAULT_MEMORY_CONFIG) {
   try {
-    // TODO(mb): Come back to Chroma later if needed.
-
-    // Initialize ChromaDB client
-    /*chromaClient = new ChromaClient({
-      path: config.chromaUrl,
-    });*/
-
     // Initialize OpenAI embedding
     embedding = new OpenAIEmbedding({
       model: config.embeddingModel,
@@ -36,10 +29,6 @@ export async function initializeMemoryStore(config: MemoryConfig = DEFAULT_MEMOR
 
     // Initialize vector store
     vectorStore = new SimpleVectorStore();
-    /*{
-      chromaClient,
-      collectionName: config.collectionName,
-    });*/
 
     console.log(`Memory store initialized with collection: ${config.collectionName}`);
     return { chromaClient, vectorStore, embedding };

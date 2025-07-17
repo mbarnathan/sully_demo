@@ -51,14 +51,14 @@ export const searchMemoryTool = tool({
     required: ['query'],
     additionalProperties: false,
   },
-  execute: async (input, _details) => {
-    const { 
-      query, 
-      conversationId, 
-      userId, 
-      memoryTypes, 
-      limit = 5, 
-      timeRange 
+  execute: async (input) => {
+    const {
+      query,
+      conversationId,
+      userId,
+      memoryTypes,
+      limit = 5,
+      timeRange
     } = input as {
       query: string;
       conversationId?: string;
@@ -70,32 +70,32 @@ export const searchMemoryTool = tool({
 
     try {
       const memoryService = MemoryService.getInstance();
-      
+
       // Build query filters
       const filters: MemoryQuery['filters'] = {};
-      
+
       if (conversationId) {
         filters.conversationId = conversationId;
       }
-      
+
       if (userId) {
         filters.userId = userId;
       }
-      
+
       if (memoryTypes && memoryTypes.length > 0) {
         filters.type = memoryTypes;
       }
-      
+
       if (timeRange) {
         const now = Date.now();
         let start = now;
-        
+
         if (timeRange.hours) {
           start = now - (timeRange.hours * 60 * 60 * 1000);
         } else if (timeRange.days) {
           start = now - (timeRange.days * 24 * 60 * 60 * 1000);
         }
-        
+
         filters.timeRange = { start, end: now };
       }
 
@@ -246,14 +246,14 @@ export const storeMemoryTool = tool({
     additionalProperties: false,
   },
   execute: async (input, details) => {
-    const { 
-      content, 
-      type, 
-      conversationId, 
-      userId, 
-      importance = 3, 
-      tags = [], 
-      summary 
+    const {
+      content,
+      type,
+      conversationId,
+      userId,
+      importance = 3,
+      tags = [],
+      summary
     } = input as {
       content: string;
       type: 'fact' | 'preference' | 'context';
@@ -266,7 +266,7 @@ export const storeMemoryTool = tool({
 
     try {
       const memoryService = MemoryService.getInstance();
-      
+
       const memoryId = await memoryService.storeMemory({
         content,
         metadata: {

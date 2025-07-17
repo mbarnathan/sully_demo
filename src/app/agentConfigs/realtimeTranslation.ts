@@ -45,7 +45,7 @@ const webhookTool = tool(
           timestamp: new Date().toISOString()
         };
 
-        const response = await fetch(webhookUrl, {
+        await fetch(webhookUrl, {
           method: 'POST',
           mode: 'no-cors',
           headers: {
@@ -59,7 +59,7 @@ const webhookTool = tool(
           message: `Webhook called successfully for command: ${args.command}`,
           details: JSON.stringify(args)
         }
-      } catch (error) {
+      } catch (_) {
         return {
           success: false,
           message: 'There was an error processing your request. Please try again.'
