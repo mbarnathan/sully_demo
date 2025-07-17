@@ -36,6 +36,8 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
   const isResponseInProgressRef = useRef<boolean>(false);
   const pendingTranslationRef = useRef<string>('');
   const isPTTActiveRef = useRef<boolean>(false);
+  const lastResponseCreatedTimeRef = useRef<number>(0);
+  const responseDebounceMs = 2000; // 2 second debounce
 
   const updateStatus = useCallback(
     (s: SessionStatus) => {
@@ -53,16 +55,39 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
   // Helper function to send translation request
   const sendTranslationRequest = useCallback((textToTranslate: string) => {
     if (!sessionRef.current || !textToTranslate.trim()) return;
+    
+    const now = Date.now();
+    
+    // Don't create response if one is already in progress
+    if (isResponseInProgressRef.current) {
+      console.log('Response already in progress, queuing translation:', textToTranslate);
+      return;
+    }
 
+    // Debounce response creation to prevent rapid-fire requests
+    if (now - lastResponseCreatedTimeRef.current < responseDebounceMs) {
+      console.log('Response creation debounced, queuing translation:', textToTranslate);
+      pendingTranslationRef.current = textToTranslate;
+      return;
+    }
+
+    console.log('Creating translation response for:', textToTranslate);
     isResponseInProgressRef.current = true;
-    sessionRef.current.transport.sendEvent({
-      type: 'response.create',
-      response: {
-        modalities: ['audio', 'text'],
-        instructions: `Translate this English text to Spanish immediately: "${textToTranslate.trim()}"`,
-        metadata: { source: 'realtime_translation' }
-      }
-    });
+    lastResponseCreatedTimeRef.current = now;
+    
+    try {
+      sessionRef.current.transport.sendEvent({
+        type: 'response.create',
+        response: {
+          modalities: ['audio', 'text'],
+          instructions: `Translate this English text to Spanish immediately: "${textToTranslate.trim()}"`,
+          metadata: { source: 'realtime_translation' }
+        }
+      });
+    } catch (error) {
+      console.error('Error creating response:', error);
+      isResponseInProgressRef.current = false;
+    }
   }, []);
 
   function handleTransportEvent(event: any) {
@@ -72,6 +97,12 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
         historyHandlers.handleTranscriptionCompleted(event);
         // Reset the accumulator when transcription is completed
         accumulatedTranscriptionRef.current = '';
+        console.log('Input audio transcription completed:', event);
+        break;
+      }
+      case "conversation.item.created": {
+        console.log('Conversation item created:', event);
+        logServerEvent(event);
         break;
       }
       case "conversation.item.input_audio_transcription.delta": {
@@ -79,6 +110,7 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
 
         // For real-time translation, trigger response on delta if we have enough content
         if (sessionRef.current && event.delta) {
+          console.log('Input transcription delta:', event.delta);
           // Accumulate the transcription text
           accumulatedTranscriptionRef.current += event.delta;
           const now = Date.now();
@@ -88,6 +120,8 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
           const shouldTranslate = words.length >= 3 ||
                                  (now - lastTranslationTimeRef.current > 1000 && words.length >= 1);
 
+          console.log('Accumulated text:', accumulatedTranscriptionRef.current, 'Words:', words.length, 'Should translate:', shouldTranslate);
+
           if (shouldTranslate && accumulatedTranscriptionRef.current.trim()) {
             // If response is in progress, accumulate more text in the pending buffer
             if (isResponseInProgressRef.current) {
@@ -96,6 +130,7 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
               pendingTranslationRef.current = pendingTranslationRef.current
                 ? `${pendingTranslationRef.current} ${newText}`
                 : newText;
+              console.log('Response in progress, queuing text:', pendingTranslationRef.current);
             } else {
               // Send immediately if no response in progress
               sendTranslationRequest(accumulatedTranscriptionRef.current.trim());
@@ -116,12 +151,34 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
         historyHandlers.handleTranscriptionDelta(event);
         break;
       }
+      case "response.created": {
+        // Track any response creation (whether by us or API)
+        console.log('Response created by API:', event);
+        isResponseInProgressRef.current = true;
+        lastResponseCreatedTimeRef.current = Date.now();
+        logServerEvent(event);
+        break;
+      }
+      case "response.output_item.added": {
+        // Track when response output items are added
+        console.log('Response output item added:', event);
+        logServerEvent(event);
+        break;
+      }
+      case "response.content_part.added": {
+        // Track when response content parts are added
+        console.log('Response content part added:', event);
+        logServerEvent(event);
+        break;
+      }
       case "response.done": {
         // Response is complete, we can send the next translation if pending
+        console.log('Response completed:', event);
         isResponseInProgressRef.current = false;
 
         // Check if we have a pending translation to send
         if (pendingTranslationRef.current) {
+          console.log('Sending pending translation:', pendingTranslationRef.current);
           sendTranslationRequest(pendingTranslationRef.current);
           pendingTranslationRef.current = '';
         }
@@ -227,6 +284,7 @@ export function useRealtimeSession(callbacks: RealtimeSessionCallbacks = {}) {
       isResponseInProgressRef.current = false;
       pendingTranslationRef.current = '';
       isPTTActiveRef.current = false;
+      lastResponseCreatedTimeRef.current = 0;
       updateStatus('CONNECTED');
     },
     [callbacks, updateStatus],

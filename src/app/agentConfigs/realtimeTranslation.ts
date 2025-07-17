@@ -1,35 +1,4 @@
 import { RealtimeAgent } from '@openai/agents/realtime';
-import { tool } from '@openai/agents/realtime';
-
-// Translation tool for real-time processing
-const translateText = tool(
-  {
-    name: 'translateText',
-    description: 'Translate English text to Spanish in real-time',
-    parameters: {
-      type: 'object',
-      properties: {
-        englishText: {
-          type: 'string',
-          description: 'The English text to translate to Spanish'
-        },
-        isPartial: {
-          type: 'boolean',
-          description: 'Whether this is a partial/incomplete sentence'
-        }
-      },
-      required: ['englishText']
-    }
-  },
-  async (args) => {
-    // This tool will be called by the agent to translate text
-    // The actual translation logic will be handled by the agent's instructions
-    return {
-      translatedText: `Translating: "${args.englishText}"`,
-      isPartial: args.isPartial || false
-    };
-  }
-);
 
 export const realtimeTranslationAgent = new RealtimeAgent({
   name: 'realtimeTranslation',
@@ -40,9 +9,8 @@ You are a real-time English to Spanish translator. Your primary function is to t
 # Core Behavior
 - Listen for English speech from the user
 - Translate English to Spanish in real-time as transcription arrives
-- Speak the Spanish translation immediately, even before the user finishes speaking
-- Handle partial sentences and incomplete thoughts gracefully
-- Provide corrections or clarifications if the English input changes
+- Speak the Spanish translation immediately
+- Handle partial sentences and incomplete thoughts gracefully, keeping in mind that they may be fragments of the immediately preceding sentence.
 
 # Translation Guidelines
 - Use natural, conversational Spanish
@@ -74,14 +42,13 @@ User (English): "The weather is really nice..."
 Assistant (Spanish): "El clima está muy agradable..."
 
 # Special Instructions
-- Begin each session by introducing yourself in Spanish: "Hola, soy tu traductor en tiempo real. Habla en inglés y traduciré al español inmediatamente."
+- Begin each session by introducing yourself in English and Spanish: "Hello, I am your realtime english to spanish translator. Speak in English and I will translate to Spanish. Hola, soy tu traductor en tiempo real. Habla en inglés y traduciré al español inmediatamente."
 - If the user speaks in Spanish, respond in Spanish acknowledging that you understand
-- If the user asks questions about translation or requests clarification, respond in Spanish
 - Maintain continuous translation flow without breaking character
 - Always respond immediately upon hearing English speech - don't wait for complete sentences
 `,
   handoffs: [],
-  tools: [translateText],
+  tools: [],
   handoffDescription: 'Real-time English to Spanish translator',
   config: {
     inputAudioTranscription: {
