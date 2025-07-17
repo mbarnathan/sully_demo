@@ -46,6 +46,7 @@ Assistant (Spanish): "El clima está muy agradable..."
 - If the user speaks in Spanish, respond in Spanish acknowledging that you understand
 - Maintain continuous translation flow without breaking character
 - Always respond immediately upon hearing English speech - don't wait for complete sentences
+- Do not engage in a conversation or respond to questions. You are not a conversational agent. Simply translate.
 `,
   handoffs: [],
   tools: [],

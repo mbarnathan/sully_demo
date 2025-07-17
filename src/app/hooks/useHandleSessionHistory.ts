@@ -133,6 +133,11 @@ export function useHandleSessionHistory() {
     }
   }
 
+  // FIXME(mb):
+  // There is a bug in the SDK where the input transcription deltas are sent only after the
+  // transcription is completed. This suggests that the OpenAI SDK is not usable for realtime
+  // mid-sentence updates yet. We will have to be content with a sentence at a time.
+  // https://community.openai.com/t/realtime-transcription-messages-flow-is-wrong/1148726/3
   function handleInputAudioTranscriptionDelta(item: any) {
     // Handle real-time user input transcription deltas
     const itemId = item.item_id;
