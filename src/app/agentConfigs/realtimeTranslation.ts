@@ -1,6 +1,11 @@
 import { RealtimeAgent } from '@openai/agents/realtime';
 import { tool } from '@openai/agents/realtime';
 
+enum Commands {
+  SCHEDULE_APPOINTMENT = 'schedule_appointment',
+  PLACE_LAB_ORDER = 'place_lab_order'
+}
+
 // Webhook tool for scheduling appointments and lab orders
 const webhookTool = tool(
   {
@@ -12,7 +17,7 @@ const webhookTool = tool(
         command: {
           type: 'string',
           description: 'The command name: "schedule_appointment" or "place_lab_order"',
-          enum: ['schedule_appointment', 'place_lab_order']
+          enum: [Commands.SCHEDULE_APPOINTMENT, Commands.PLACE_LAB_ORDER]
         },
         date: {
           type: 'string',
@@ -28,52 +33,38 @@ const webhookTool = tool(
         }
       },
       required: ['command']
-    }
-  },
-  async (args) => {
-    try {
-      const webhookUrl = 'https://webhook.site/57061cae-3325-418d-8153-4730bca5f3cc';
-      const payload = {
-        command: args.command,
-        date: args.date || null,
-        medication: args.medication || null,
-        details: args.details || null,
-        timestamp: new Date().toISOString()
-      };
+    },
+    execute: async (args) => {
+      try {
+        const webhookUrl = 'https://webhook.site/57061cae-3325-418d-8153-4730bca5f3cc';
+        const payload = {
+          command: args.command,
+          date: args.date || null,
+          medication: args.medication || null,
+          details: args.details || null,
+          timestamp: new Date().toISOString()
+        };
 
-      const response = await fetch(webhookUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload)
-      });
+        const response = await fetch(webhookUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
 
-      if (response.ok) {
-        if (args.command === 'schedule_appointment') {
-          return {
-            success: true,
-            message: 'Appointment has been scheduled successfully',
-            details: args.date ? `for ${args.date}` : ''
-          };
-        } else if (args.command === 'place_lab_order') {
-          return {
-            success: true,
-            message: 'Lab order has been placed successfully',
-            details: args.medication ? `for ${args.medication}` : ''
-          };
+        return {
+          success: true,
+          message: `Webhook called successfully for command: ${args.command}`,
+          details: JSON.stringify(args)
         }
-      } else {
+      } catch (error) {
         return {
           success: false,
-          message: 'There was an error processing your request. Please try again.',
+          message: 'There was an error processing your request. Please try again.'
         };
       }
-    } catch (error) {
-      return {
-        success: false,
-        message: 'There was an error processing your request. Please try again.'
-      };
     }
   }
 );
