@@ -1,6 +1,6 @@
 # Bidirectional Realtime Translator
 
-This is an interpreter for a patient and provider, using the OpenAI Realtime API to facilitate voice interactions.
+This is an interpreter for a patient and provider, using the OpenAI Realtime API to facilitate voice interactions. The OpenAI Realtime API example was used as a base and modified.
 
 The agent will recognize either English or Spanish and translate into the other language, facilitating a bidirectional conversation.
 
